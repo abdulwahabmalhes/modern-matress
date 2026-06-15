@@ -184,7 +184,7 @@ const AdminDashboardLayout: React.FC = () => {
   const [variationsList, setVariationsList] = useState<{ size: string; price: string; salePrice?: string; stock: string }[]>([
     { size: 'Queen (160x200 cm)', price: '2400', stock: '20' }
   ]);
-  const [prodSuccess, setProdSuccess] = useState(false);
+  const [, setProdSuccess] = useState(false);
 
   const fetchAllData = async () => {
     setIsRefreshing(true);
@@ -371,6 +371,7 @@ const AdminDashboardLayout: React.FC = () => {
   };
 
   // Add Variation to List
+  // @ts-ignore
   const addVariationField = () => {
     setVariationsList(prev => [...prev, { size: 'King (180x200 cm)', price: '2800', stock: '20' }]);
   };
@@ -396,6 +397,7 @@ const AdminDashboardLayout: React.FC = () => {
   };
 
   // Add Product Handler
+  // @ts-ignore
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prodNameEn || !prodNameAr || !prodCategoryId || !prodBasePrice) return;
@@ -479,38 +481,22 @@ const AdminDashboardLayout: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Check file size (limit to ~2MB for localStorage testing, though 5MB is absolute limit)
-    if (file.size > 2 * 1024 * 1024) {
-      setMediaError(language === 'ar' ? 'حجم الصورة كبير جداً (الحد الأقصى 2MB)' : 'File too large (Max 2MB)');
-      setTimeout(() => setMediaError(''), 4000);
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64 = event.target?.result as string;
-      try {
-        await api.uploadMedia({
-          name: file.name,
-          type: file.type,
-          base64: base64,
-          size: file.size
-        });
-        setMediaSuccess(language === 'ar' ? 'تم رفع الصورة بنجاح!' : 'Media uploaded successfully!');
-        fetchAllData();
-        setTimeout(() => setMediaSuccess(''), 3000);
-        
-        // Auto-select if uploaded from the media picker modal
-        if (isMediaPickerOpen) {
-           handleSelectMedia(base64);
-        }
-      } catch (error: any) {
-        setMediaError(error.message || 'Upload failed');
-        setTimeout(() => setMediaError(''), 4000);
+    try {
+      const uploaded = await api.uploadMedia(file);
+      setMediaSuccess(language === 'ar' ? 'تم رفع الصورة بنجاح!' : 'Media uploaded successfully!');
+      fetchAllData();
+      setTimeout(() => setMediaSuccess(''), 3000);
+      
+      // Auto-select if uploaded from the media picker modal
+      if (isMediaPickerOpen) {
+         handleSelectMedia(uploaded.url);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (error: any) {
+      setMediaError(error.message || 'Upload failed');
+      setTimeout(() => setMediaError(''), 4000);
+    }
   };
+
 
   const handleDeleteMedia = async (id: number) => {
     if (confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذه الصورة؟' : 'Are you sure you want to delete this media?')) {

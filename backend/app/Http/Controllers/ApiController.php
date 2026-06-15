@@ -11,8 +11,12 @@ use App\Models\AttributeOption;
 use App\Models\Quotation;
 use App\Models\User;
 use App\Models\Order;
+use App\Models\Brand;
+use App\Models\HomeSection;
+use App\Models\Media;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class ApiController extends Controller
 {
@@ -44,6 +48,151 @@ class ApiController extends Controller
         return response()->json($category, 201);
     }
 
+    public function updateCategory(Request $request, $id)
+    {
+        $category = Category::find($id);
+        if (!$category) return response()->json(['message' => 'Not found'], 404);
+
+        $validated = $request->validate([
+            'name_en' => 'sometimes|string',
+            'name_ar' => 'sometimes|string',
+            'image_url' => 'nullable|string',
+        ]);
+
+        if (isset($validated['name_en'])) {
+            $validated['slug'] = Str::slug($validated['name_en']);
+        }
+
+        $category->update($validated);
+        return response()->json($category);
+    }
+
+    public function deleteCategory($id)
+    {
+        $category = Category::find($id);
+        if (!$category) return response()->json(['message' => 'Not found'], 404);
+        $category->delete();
+        return response()->json(['message' => 'Deleted successfully']);
+    }
+
+    // --- BRANDS ---
+    public function getBrands()
+    {
+        return response()->json(Brand::all());
+    }
+
+    public function storeBrand(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string',
+            'logo_url' => 'nullable|string',
+        ]);
+
+        $slug = Str::slug($validated['name']);
+        $brand = Brand::create([
+            'slug' => $slug,
+            'name' => $validated['name'],
+            'logo_url' => $validated['logo_url'] ?? null,
+        ]);
+
+        return response()->json($brand, 201);
+    }
+
+    public function updateBrand(Request $request, $id)
+    {
+        $brand = Brand::find($id);
+        if (!$brand) return response()->json(['message' => 'Not found'], 404);
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string',
+            'logo_url' => 'nullable|string',
+        ]);
+
+        if (isset($validated['name'])) {
+            $validated['slug'] = Str::slug($validated['name']);
+        }
+
+        $brand->update($validated);
+        return response()->json($brand);
+    }
+
+    public function deleteBrand($id)
+    {
+        $brand = Brand::find($id);
+        if (!$brand) return response()->json(['message' => 'Not found'], 404);
+        $brand->delete();
+        return response()->json(['message' => 'Deleted successfully']);
+    }
+
+    // --- HOME LAYOUT ---
+    public function getHomeLayout()
+    {
+        $sections = HomeSection::orderBy('order')->get();
+        return response()->json($sections);
+    }
+
+    public function saveHomeLayout(Request $request)
+    {
+        $validated = $request->validate([
+            'sections' => 'required|array',
+        ]);
+
+        foreach ($validated['sections'] as $sec) {
+            HomeSection::updateOrCreate(
+                ['section_id' => $sec['id']],
+                [
+                    'type' => $sec['type'],
+                    'name_en' => $sec['name']['en'],
+                    'name_ar' => $sec['name']['ar'],
+                    'visible' => $sec['visible'],
+                    'order' => $sec['order'],
+                    'content' => $sec['content'] ?? null,
+                ]
+            );
+        }
+
+        return response()->json(['message' => 'Layout saved']);
+    }
+
+    // --- MEDIA LIBRARY ---
+    public function getMedia()
+    {
+        return response()->json(Media::orderBy('created_at', 'desc')->get());
+    }
+
+    public function storeMedia(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|file|image|max:10240',
+        ]);
+
+        $file = $request->file('image');
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $path = $file->storeAs('media', $filename, 'public');
+        $url = Storage::disk('public')->url($path);
+
+        $media = Media::create([
+            'name' => $file->getClientOriginalName(),
+            'url' => $url,
+            'type' => 'image',
+        ]);
+
+        return response()->json($media, 201);
+    }
+
+    public function deleteMedia($id)
+    {
+        $media = Media::find($id);
+        if (!$media) return response()->json(['message' => 'Not found'], 404);
+
+        // Extract path from url and delete file
+        $relativePath = str_replace('/storage/', '', parse_url($media->url, PHP_URL_PATH));
+        Storage::disk('public')->delete($relativePath);
+
+        $media->delete();
+        return response()->json(['message' => 'Deleted']);
+    }
+
     // --- PRODUCTS ---
     public function getProducts(Request $request)
     {
@@ -53,6 +202,10 @@ class ApiController extends Controller
             $query->whereHas('category', function($q) use ($request) {
                 $q->where('slug', $request->category);
             });
+        }
+
+        if ($request->has('brand') && $request->brand != 'all') {
+            $query->where('brand', 'like', '%' . $request->brand . '%');
         }
 
         if ($request->has('firmness') && $request->firmness != 'all') {
@@ -114,7 +267,7 @@ class ApiController extends Controller
             'brand' => 'required|string',
             'base_price' => 'required|numeric',
             'sale_price' => 'nullable|numeric',
-            'firmness' => 'required|string', // soft, medium, firm
+            'firmness' => 'required|string',
             'warranty_months' => 'required|integer',
             'short_description_en' => 'required|string',
             'short_description_ar' => 'required|string',
@@ -122,7 +275,7 @@ class ApiController extends Controller
             'description_ar' => 'required|string',
             'images' => 'required|array',
             'variations' => 'required|array',
-            'attributes' => 'nullable|array', // array of option IDs
+            'attributes' => 'nullable|array',
         ]);
 
         $slug = Str::slug($validated['name_en']);
@@ -144,7 +297,6 @@ class ApiController extends Controller
             'images' => $validated['images'],
         ]);
 
-        // Add variations
         foreach ($validated['variations'] as $v) {
             ProductVariation::create([
                 'product_id' => $product->id,
@@ -155,12 +307,11 @@ class ApiController extends Controller
             ]);
         }
 
-        // Attach attributes pivot
         if (!empty($validated['attributes'])) {
             $product->attributes()->attach($validated['attributes']);
         }
 
-        return response()->json(Product::with(['category', 'variations', 'attributes.group'])->find($product->id), 21);
+        return response()->json(Product::with(['category', 'variations', 'attributes.group'])->find($product->id), 201);
     }
 
     public function updateProduct(Request $request, $id)
@@ -186,6 +337,8 @@ class ApiController extends Controller
             'images' => 'sometimes|array',
             'variations' => 'sometimes|array',
             'attributes' => 'nullable|array',
+            'is_best_seller' => 'sometimes|boolean',
+            'is_new' => 'sometimes|boolean',
         ]);
 
         if (isset($validated['name_en'])) {
@@ -241,16 +394,14 @@ class ApiController extends Controller
             'name_ar' => 'required|string',
         ]);
 
-        $slug = Str::slug($validated['name_en']);
-
         $group = AttributeGroup::create([
             'name_en' => $validated['name_en'],
             'name_ar' => $validated['name_ar'],
-            'slug' => $slug,
+            'slug' => Str::slug($validated['name_en']),
             'type' => 'select',
         ]);
 
-        return response()->json($group, 21);
+        return response()->json($group, 201);
     }
 
     public function storeFilterOption(Request $request)
@@ -262,8 +413,7 @@ class ApiController extends Controller
         ]);
 
         $option = AttributeOption::create($validated);
-
-        return response()->json($option, 21);
+        return response()->json($option, 201);
     }
 
     // --- B2B QUOTATIONS ---
@@ -286,11 +436,8 @@ class ApiController extends Controller
             'amount' => 'nullable|numeric',
         ]);
 
-        $randomNum = Math_random_no();
-        $quoteNumber = 'QT-2026-' . $randomNum;
-
         $quote = Quotation::create([
-            'quote_number' => $quoteNumber,
+            'quote_number' => 'QT-2026-' . rand(10000, 99999),
             'name' => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'],
@@ -303,34 +450,23 @@ class ApiController extends Controller
             'amount' => $validated['amount'] ?? 5000,
         ]);
 
-        return response()->json($quote, 21);
+        return response()->json($quote, 201);
     }
 
     public function updateQuotationStatus(Request $request, $id)
     {
-        $validated = $request->validate([
-            'status' => 'required|string',
-        ]);
-
+        $validated = $request->validate(['status' => 'required|string']);
         $quote = Quotation::find($id);
-        if (!$quote) {
-            return response()->json(['message' => 'Quotation lead not found'], 404);
-        }
-
+        if (!$quote) return response()->json(['message' => 'Not found'], 404);
         $quote->update(['status' => $validated['status']]);
-
         return response()->json($quote);
     }
 
     public function deleteQuotation($id)
     {
         $quote = Quotation::find($id);
-        if (!$quote) {
-            return response()->json(['message' => 'Quotation not found'], 404);
-        }
-
+        if (!$quote) return response()->json(['message' => 'Not found'], 404);
         $quote->delete();
-
         return response()->json(['message' => 'Deleted successfully']);
     }
 
@@ -395,11 +531,9 @@ class ApiController extends Controller
             'items' => 'required|array',
         ]);
 
-        $orderNumber = 'INV-2026-' . rand(10000, 99999);
-
         $order = Order::create([
             'user_id' => $validated['user_id'] ?? null,
-            'order_number' => $orderNumber,
+            'order_number' => 'INV-2026-' . rand(10000, 99999),
             'customer_name' => $validated['customer_name'],
             'customer_email' => $validated['customer_email'],
             'customer_phone' => $validated['customer_phone'],
@@ -429,17 +563,10 @@ class ApiController extends Controller
         ]);
 
         $order = Order::find($id);
-        if (!$order) {
-            return response()->json(['message' => 'Order not found'], 404);
-        }
+        if (!$order) return response()->json(['message' => 'Order not found'], 404);
 
-        if (isset($validated['status'])) {
-            $order->status = $validated['status'];
-        }
-        if (isset($validated['payment_status'])) {
-            $order->payment_status = $validated['payment_status'];
-        }
-
+        if (isset($validated['status'])) $order->status = $validated['status'];
+        if (isset($validated['payment_status'])) $order->payment_status = $validated['payment_status'];
         $order->save();
 
         return response()->json($order);
@@ -455,9 +582,4 @@ class ApiController extends Controller
 
         return response()->json($customers);
     }
-}
-
-// Inline helper for random quotation number to avoid extra function dependencies
-function Math_random_no() {
-    return rand(10000, 99999);
 }

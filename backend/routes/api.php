@@ -7,6 +7,14 @@ Route::prefix('v1')->group(function () {
     // Categories
     Route::get('/categories', [ApiController::class, 'getCategories']);
     Route::post('/categories', [ApiController::class, 'storeCategory']);
+    Route::put('/categories/{id}', [ApiController::class, 'updateCategory']);
+    Route::delete('/categories/{id}', [ApiController::class, 'deleteCategory']);
+
+    // Brands
+    Route::get('/brands', [ApiController::class, 'getBrands']);
+    Route::post('/brands', [ApiController::class, 'storeBrand']);
+    Route::put('/brands/{id}', [ApiController::class, 'updateBrand']);
+    Route::delete('/brands/{id}', [ApiController::class, 'deleteBrand']);
 
     // Products
     Route::get('/products', [ApiController::class, 'getProducts']);
@@ -38,4 +46,13 @@ Route::prefix('v1')->group(function () {
 
     // Customers
     Route::get('/customers', [ApiController::class, 'getCustomers']);
+
+    // Home Sections Layout
+    Route::get('/home-layout', [ApiController::class, 'getHomeLayout']);
+    Route::post('/home-layout', [ApiController::class, 'saveHomeLayout']);
+
+    // Media Library
+    Route::get('/media', [ApiController::class, 'getMedia']);
+    Route::post('/media', [ApiController::class, 'storeMedia']);
+    Route::delete('/media/{id}', [ApiController::class, 'deleteMedia']);
 });

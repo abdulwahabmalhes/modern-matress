@@ -365,34 +365,18 @@ const AdminDashboardLayout: React.FC = () => {
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    // Check file size (limit to ~2MB for localStorage testing, though 5MB is absolute limit)
-    if (file.size > 2 * 1024 * 1024) {
-      setMediaError(language === 'ar' ? 'حجم الصورة كبير جداً (الحد الأقصى 2MB)' : 'File too large (Max 2MB)');
-      setTimeout(() => setMediaError(''), 4000);
-      return;
-    }
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64 = event.target?.result as string;
-      try {
-        await api.uploadMedia({
-          name: file.name,
-          type: file.type,
-          base64: base64,
-          size: file.size
-        });
-        setMediaSuccess(language === 'ar' ? 'تم رفع الصورة بنجاح!' : 'Media uploaded successfully!');
-        fetchAllData();
-        setTimeout(() => setMediaSuccess(''), 3000);
-      } catch (error: any) {
-        setMediaError(error.message || 'Upload failed');
-        setTimeout(() => setMediaError(''), 4000);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      await api.uploadMedia(file);
+      setMediaSuccess(language === 'ar' ? 'تم رفع الصورة بنجاح!' : 'Media uploaded successfully!');
+      fetchAllData();
+      setTimeout(() => setMediaSuccess(''), 3000);
+    } catch (error: any) {
+      setMediaError(error.message || 'Upload failed');
+      setTimeout(() => setMediaError(''), 4000);
+    }
   };
+
 
   const handleDeleteMedia = async (id: number) => {
     if (confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذه الصورة؟' : 'Are you sure you want to delete this media?')) {

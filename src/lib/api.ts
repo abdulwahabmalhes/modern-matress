@@ -777,35 +777,41 @@ export const api = {
     }
   },
 
-  async uploadMedia(mediaData: { name: string; type: string; base64: string; size: number }) {
+  async uploadMedia(file: File) {
     try {
+      const formData = new FormData();
+      formData.append('image', file);
       const res = await fetch(`${API_BASE}/media`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mediaData)
+        body: formData
       });
+      if (!res.ok) throw new Error('API error');
       return await res.json();
     } catch (e) {
       console.warn('Backend offline, adding offline media', e);
       const mediaList = await this.getMedia();
       
+      // Convert to base64 for offline storage
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
       const newMedia = { 
         id: Date.now(), 
-        name: mediaData.name,
-        type: mediaData.type,
-        url: mediaData.base64, // using base64 as URL
-        size: mediaData.size,
+        name: file.name,
+        type: 'image',
+        url: base64,
         created_at: new Date().toISOString()
       };
       
-      // Store in array and check quota issues
       mediaList.unshift(newMedia);
-      
       try {
         localStorage.setItem('mm_offline_media', JSON.stringify(mediaList));
         return newMedia;
-      } catch (storageError) {
-        throw new Error('Local storage quota exceeded. Please upload a smaller image or delete old ones.');
+      } catch {
+        throw new Error('Local storage quota exceeded.');
       }
     }
   },
@@ -843,8 +849,9 @@ export const api = {
       const res = await fetch(`${API_BASE}/home-layout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(layout)
+        body: JSON.stringify({ sections: layout })
       });
+      if (!res.ok) throw new Error('API error');
       return await res.json();
     } catch (e) {
       localStorage.setItem('mm_home_layout', JSON.stringify(layout));
