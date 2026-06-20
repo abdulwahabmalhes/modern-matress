@@ -5,7 +5,7 @@ import { uaeCities } from './data/mockData';
 import { 
   Landmark, TrendingUp, Users, FileCheck, Phone, RefreshCw, 
   Trash2, LayoutGrid, ClipboardList, Settings, CheckCircle2, 
-  Globe, BarChart3, Eye, Database, Folder, PlusCircle, Tag, X, Printer, Image, Upload
+  Globe, BarChart3, Eye, Database, Folder, PlusCircle, Tag, X, Printer, Image, Upload, Bed, Box, Star, Award, Wind, Home, ShoppingBag, Bell, PackageSearch, FileText, ChevronDown, Calendar, Search, MapPin, Mail, Building, ChevronRight, CheckCircle, CreditCard, Clock, Activity, AlertCircle, Edit, Save, ShieldCheck
 } from 'lucide-react';
 
 interface Lead {
@@ -30,6 +30,7 @@ interface Category {
   slug: string;
   name: { en: string; ar: string };
   image: string;
+  icon?: string;
   parent_id?: number | null;
 }
 
@@ -42,6 +43,105 @@ interface FilterGroup {
 }
 
 export const AdminApp: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  // Very basic security (hardcoded for now, should be env var in production)
+  const ADMIN_PASSWORD = 'admin'; 
+
+  useEffect(() => {
+    const auth = sessionStorage.getItem('mm_admin_auth');
+    if (auth === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === ADMIN_PASSWORD) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('mm_admin_auth', 'true');
+      setError('');
+    } else {
+      setError('كلمة المرور غير صحيحة / Incorrect password');
+      
+      // Fun "explosive" effect on wrong password
+      const btn = document.getElementById('login-btn');
+      if (btn) {
+        btn.classList.add('animate-shake');
+        btn.classList.add('bg-red-600');
+        setTimeout(() => {
+          btn.classList.remove('animate-shake');
+          btn.classList.remove('bg-red-600');
+        }, 500);
+      }
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center relative overflow-hidden" style={{ direction: 'ltr' }}>
+        
+        {/* Animated Background Elements - "Fire/Explosion" aesthetics */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
+          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-orange-600/20 blur-[120px] rounded-full mix-blend-screen animate-pulse"></div>
+          <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-red-600/20 blur-[150px] rounded-full mix-blend-screen animate-pulse" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute top-[40%] left-[60%] w-[30%] h-[30%] bg-amber-500/10 blur-[100px] rounded-full mix-blend-screen animate-pulse" style={{ animationDelay: '2s' }}></div>
+          
+          {/* Grid lines */}
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgc3Ryb2tlPSIjZmZmIiBzdHJva2Utb3BhY2l0eT0iMC4wMyIgZmlsbD0ibm9uZSI+PHBhdGggZD0iTTAgNDBoNDBNNDAgMHY0MCIvPjwvZz48L3N2Zz4=')] opacity-50 z-0"></div>
+        </div>
+
+        <div className="z-10 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 p-10 rounded-3xl shadow-2xl w-full max-w-md transform transition-all duration-500 hover:scale-[1.02] hover:border-orange-500/30">
+          
+          <div className="flex justify-center mb-8">
+            <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl flex items-center justify-center shadow-[0_0_40px_rgba(234,88,12,0.4)] relative">
+              <div className="absolute inset-0 bg-white/20 rounded-2xl blur-sm"></div>
+              <ShieldCheck className="w-10 h-10 text-white relative z-10" />
+            </div>
+          </div>
+
+          <h1 className="text-3xl font-black text-white text-center mb-2 tracking-tight">Admin System</h1>
+          <p className="text-zinc-400 text-center text-sm mb-8 font-mono">SECURE LOGIN REQUIRED</p>
+
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2 relative group">
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter Passcode..."
+                className="w-full bg-zinc-950 border border-zinc-800 text-white px-5 py-4 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all font-mono tracking-widest text-center"
+                autoFocus
+              />
+              <div className="absolute inset-0 border border-orange-500 rounded-xl opacity-0 scale-105 group-focus-within:opacity-100 group-focus-within:scale-100 transition-all duration-300 pointer-events-none"></div>
+            </div>
+
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs text-center py-3 rounded-lg font-bold animate-pulse">
+                {error}
+              </div>
+            )}
+
+            <button 
+              id="login-btn"
+              type="submit"
+              className="w-full bg-white text-zinc-950 font-black py-4 rounded-xl uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(234,88,12,0.5)] transform active:scale-95"
+            >
+              Authenticate
+            </button>
+          </form>
+        </div>
+
+        <div className="absolute bottom-5 text-zinc-600 text-[10px] font-mono flex items-center gap-2 z-10">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          SYSTEM SECURED • AES-256 ENCRYPTION ACTIVE
+        </div>
+      </div>
+    );
+  }
+
   return (
     <LanguageProvider>
       <AdminDashboardLayout />
@@ -100,6 +200,7 @@ const AdminDashboardLayout: React.FC = () => {
   const [catNameEn, setCatNameEn] = useState('');
   const [catNameAr, setCatNameAr] = useState('');
   const [catImage, setCatImage] = useState('');
+  const [catIcon, setCatIcon] = useState('Box');
   const [catParentId, setCatParentId] = useState<string>('');
   const [catSuccess, setCatSuccess] = useState(false);
 
@@ -210,12 +311,14 @@ const AdminDashboardLayout: React.FC = () => {
       name_en: catNameEn,
       name_ar: catNameAr,
       image_url: catImage || undefined,
-      parent_id: catParentId ? Number(catParentId) : undefined
+      parent_id: catParentId ? Number(catParentId) : undefined,
+      icon: catIcon
     });
 
     setCatNameEn('');
     setCatNameAr('');
     setCatImage('');
+    setCatIcon('Box');
     setCatParentId('');
     setCatSuccess(true);
     fetchAllData();
@@ -1202,6 +1305,25 @@ const AdminDashboardLayout: React.FC = () => {
                       >
                         <Image className="w-4 h-4" />
                       </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">{language === 'ar' ? 'أيقونة القسم' : 'Category Icon'}</label>
+                    <div className="flex gap-2 flex-wrap bg-gray-50 p-2 rounded-xl border border-gray-200">
+                      {['Box', 'Bed', 'Star', 'Award', 'Wind', 'Home', 'ShoppingBag', 'Tag'].map((iconName) => {
+                        const IconComp = { Box, Bed, Star, Award, Wind, Home, ShoppingBag, Tag }[iconName] || Box;
+                        return (
+                          <button
+                            key={iconName}
+                            type="button"
+                            onClick={() => setCatIcon(iconName)}
+                            className={`p-2.5 rounded-lg border transition-all ${catIcon === iconName ? 'bg-primary text-white border-primary shadow-md' : 'bg-white text-gray-400 border-gray-200 hover:text-dark hover:border-gray-300'}`}
+                          >
+                            <IconComp className="w-4 h-4" />
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 

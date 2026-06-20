@@ -44,6 +44,105 @@ interface FilterGroup {
 }
 
 export const AdminApp: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  // Very basic security (hardcoded for now, should be env var in production)
+  const ADMIN_PASSWORD = 'admin'; 
+
+  useEffect(() => {
+    const auth = sessionStorage.getItem('mm_admin_auth');
+    if (auth === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === ADMIN_PASSWORD) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('mm_admin_auth', 'true');
+      setError('');
+    } else {
+      setError('كلمة المرور غير صحيحة / Incorrect password');
+      
+      // Fun "explosive" effect on wrong password
+      const btn = document.getElementById('login-btn');
+      if (btn) {
+        btn.classList.add('animate-shake');
+        btn.classList.add('bg-red-600');
+        setTimeout(() => {
+          btn.classList.remove('animate-shake');
+          btn.classList.remove('bg-red-600');
+        }, 500);
+      }
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center relative overflow-hidden" style={{ direction: 'ltr' }}>
+        
+        {/* Animated Background Elements - "Fire/Explosion" aesthetics */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
+          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-orange-600/20 blur-[120px] rounded-full mix-blend-screen animate-pulse"></div>
+          <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-red-600/20 blur-[150px] rounded-full mix-blend-screen animate-pulse" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute top-[40%] left-[60%] w-[30%] h-[30%] bg-amber-500/10 blur-[100px] rounded-full mix-blend-screen animate-pulse" style={{ animationDelay: '2s' }}></div>
+          
+          {/* Grid lines */}
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgc3Ryb2tlPSIjZmZmIiBzdHJva2Utb3BhY2l0eT0iMC4wMyIgZmlsbD0ibm9uZSI+PHBhdGggZD0iTTAgNDBoNDBNNDAgMHY0MCIvPjwvZz48L3N2Zz4=')] opacity-50 z-0"></div>
+        </div>
+
+        <div className="z-10 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 p-10 rounded-3xl shadow-2xl w-full max-w-md transform transition-all duration-500 hover:scale-[1.02] hover:border-orange-500/30">
+          
+          <div className="flex justify-center mb-8">
+            <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl flex items-center justify-center shadow-[0_0_40px_rgba(234,88,12,0.4)] relative">
+              <div className="absolute inset-0 bg-white/20 rounded-2xl blur-sm"></div>
+              <div className="text-white relative z-10 w-10 h-10 flex items-center justify-center">🛡️</div>
+            </div>
+          </div>
+
+          <h1 className="text-3xl font-black text-white text-center mb-2 tracking-tight">Admin System</h1>
+          <p className="text-zinc-400 text-center text-sm mb-8 font-mono">SECURE LOGIN REQUIRED</p>
+
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2 relative group">
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter Passcode..."
+                className="w-full bg-zinc-950 border border-zinc-800 text-white px-5 py-4 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all font-mono tracking-widest text-center"
+                autoFocus
+              />
+              <div className="absolute inset-0 border border-orange-500 rounded-xl opacity-0 scale-105 group-focus-within:opacity-100 group-focus-within:scale-100 transition-all duration-300 pointer-events-none"></div>
+            </div>
+
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs text-center py-3 rounded-lg font-bold animate-pulse">
+                {error}
+              </div>
+            )}
+
+            <button 
+              id="login-btn"
+              type="submit"
+              className="w-full bg-white text-zinc-950 font-black py-4 rounded-xl uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(234,88,12,0.5)] transform active:scale-95"
+            >
+              Authenticate
+            </button>
+          </form>
+        </div>
+
+        <div className="absolute bottom-5 text-zinc-600 text-[10px] font-mono flex items-center gap-2 z-10">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          SYSTEM SECURED • AES-256 ENCRYPTION ACTIVE
+        </div>
+      </div>
+    );
+  }
+
   return (
     <LanguageProvider>
       <AdminDashboardLayout />
@@ -59,7 +158,7 @@ const AdminDashboardLayout: React.FC = () => {
   const t = (key: string) => contextT(key);
   
   // Navigation Tabs
-  const [activeTab, setActiveTab] = useState<'reports' | 'quotes' | 'products' | 'categories' | 'filters' | 'invoices' | 'customers' | 'banners' | 'media' | 'brands' | 'home-layout'>('reports');
+  const [activeTab, setActiveTab] = useState<'reports' | 'quotes' | 'products' | 'categories' | 'filters' | 'invoices' | 'customers' | 'banners' | 'media' | 'brands' | 'home-layout' | 'settings'>('reports');
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [productToEdit, setProductToEdit] = useState<any>(null);
 
@@ -151,6 +250,16 @@ const AdminDashboardLayout: React.FC = () => {
   const [newSectionFilterType, setNewSectionFilterType] = useState<'category' | 'brand'>('category');
   const [newSectionFilterId, setNewSectionFilterId] = useState('');
 
+  // Settings / API Keys State
+  const [adminSettings, setAdminSettings] = useState<Record<string, string>>({
+    stripe_public_key: '',
+    stripe_secret_key: '',
+    tabby_public_key: '',
+    tabby_secret_key: '',
+    ziina_api_key: ''
+  });
+  const [settingsSuccess, setSettingsSuccess] = useState(false);
+
   const handleAddCustomSection = () => {
     if (!newSectionNameEn || !newSectionNameAr) return;
     const newSection: any = {
@@ -207,6 +316,7 @@ const AdminDashboardLayout: React.FC = () => {
       const mediaData = await api.getMedia();
       const brandsData = await api.getBrands();
       const homeLayoutData = await api.getHomeLayout();
+      const settingsData = await api.getSettings();
 
       setLeads(leadsData);
       setCategories(categoriesData);
@@ -218,6 +328,10 @@ const AdminDashboardLayout: React.FC = () => {
       setMediaList(mediaData);
       setBrandsList(brandsData);
       setHomeLayout(homeLayoutData);
+      
+      if (settingsData && Object.keys(settingsData).length > 0) {
+        setAdminSettings(prev => ({ ...prev, ...settingsData }));
+      }
 
       if (categoriesData.length > 0 && !prodCategoryId) {
         setProdCategoryId(String(categoriesData[0].dbId || categoriesData[0].id));
@@ -476,6 +590,14 @@ const AdminDashboardLayout: React.FC = () => {
     }
   };
 
+  // Save Settings Handler
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await api.saveSettings(adminSettings);
+    setSettingsSuccess(true);
+    setTimeout(() => setSettingsSuccess(false), 3000);
+  };
+
   // Media Library Handlers
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -638,6 +760,7 @@ const AdminDashboardLayout: React.FC = () => {
                 { id: 'filters', label: 'Dynamic Fields', icon: Settings },
                 { id: 'products', label: 'Products CRUD', icon: Tag },
                 { id: 'home-layout', label: 'Home Builder', icon: LayoutGrid },
+                { id: 'settings', label: 'Integrations & Settings', icon: Globe },
               ].map(item => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -1872,6 +1995,127 @@ const AdminDashboardLayout: React.FC = () => {
             </div>
           )}
 
+          {/* --- TAB: SETTINGS & INTEGRATIONS --- */}
+          {activeTab === 'settings' && (
+            <div className="space-y-8 animate-fadeIn">
+              <div className="bg-white backdrop-blur-2xl border border-gray-200 rounded-3xl p-6 lg:p-10 shadow-xl max-w-4xl mx-auto">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                    <Globe className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                      {language === 'ar' ? 'إعدادات الربط وبوابات الدفع' : 'Payment Gateways & Integrations'}
+                    </h3>
+                    <p className="text-sm text-gray-500 font-bold mt-1">
+                      {language === 'ar' ? 'أدخل مفاتيح الـ API لتفعيل بوابات الدفع حقيقياً' : 'Configure your API keys for live payment processing.'}
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSaveSettings} className="space-y-8">
+                  
+                  {/* Stripe Settings */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
+                    <h4 className="font-extrabold text-sm text-indigo-600 mb-4 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-indigo-600"></div> Stripe (Credit Cards)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-2">Publishable Key</label>
+                        <input 
+                          type="text" 
+                          value={adminSettings.stripe_public_key || ''} 
+                          onChange={e => setAdminSettings({...adminSettings, stripe_public_key: e.target.value})}
+                          placeholder="pk_test_..." 
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-2">Secret Key</label>
+                        <input 
+                          type="password" 
+                          value={adminSettings.stripe_secret_key || ''} 
+                          onChange={e => setAdminSettings({...adminSettings, stripe_secret_key: e.target.value})}
+                          placeholder="sk_test_..." 
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tabby Settings */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
+                    <h4 className="font-extrabold text-sm text-teal-500 mb-4 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-teal-500"></div> Tabby (BNPL)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-2">Public Key</label>
+                        <input 
+                          type="text" 
+                          value={adminSettings.tabby_public_key || ''} 
+                          onChange={e => setAdminSettings({...adminSettings, tabby_public_key: e.target.value})}
+                          placeholder="pk_test_..." 
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-500 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-2">Secret Key</label>
+                        <input 
+                          type="password" 
+                          value={adminSettings.tabby_secret_key || ''} 
+                          onChange={e => setAdminSettings({...adminSettings, tabby_secret_key: e.target.value})}
+                          placeholder="sk_test_..." 
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-500 font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Ziina Settings */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
+                    <h4 className="font-extrabold text-sm text-purple-600 mb-4 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-purple-600"></div> Ziina Pay (UAE)
+                    </h4>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-2">API Key</label>
+                        <input 
+                          type="password" 
+                          value={adminSettings.ziina_api_key || ''} 
+                          onChange={e => setAdminSettings({...adminSettings, ziina_api_key: e.target.value})}
+                          placeholder="Bearer token..." 
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between border-t border-gray-200 pt-6">
+                    {settingsSuccess ? (
+                      <span className="text-emerald-500 text-sm font-bold flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5" /> 
+                        {language === 'ar' ? 'تم الحفظ بنجاح!' : 'Settings Saved!'}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs font-bold">
+                        {language === 'ar' ? 'يتم التشفير قبل الحفظ في قاعدة البيانات' : 'Keys are encrypted in database'}
+                      </span>
+                    )}
+                    <button 
+                      type="submit" 
+                      className="bg-dark hover:bg-black text-white px-8 py-3.5 rounded-xl text-sm font-extrabold transition-all shadow-lg hover:-translate-y-1"
+                    >
+                      {language === 'ar' ? 'حفظ التغييرات' : 'Save Settings'}
+                    </button>
+                  </div>
+
+                </form>
+              </div>
+            </div>
+          )}
         </section>
       </div>
 

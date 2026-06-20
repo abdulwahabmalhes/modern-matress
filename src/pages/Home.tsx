@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { useCart } from '../context/CartContext';
 import { categories as mockCategories, products as mockProducts, brands as mockBrands, reviews as mockReviews } from '../data/mockData';
 import type { Product } from '../data/mockData';
-import { api } from '../lib/api';
+import { api, defaultHomeLayout } from '../lib/api';
 import type { HomeSection } from '../lib/api';
 import { AttributeBadge } from '../components/AttributeBadge';
 import { Ticker } from '../components/Ticker';
@@ -11,13 +12,13 @@ import { Star, ChevronDown, Award, ArrowRight, ArrowLeft } from 'lucide-react';
 
 export const Home: React.FC = () => {
   const { language, t, isRtl } = useLanguage();
+  const { addToCart } = useCart();
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const navigate = useNavigate();
 
   // API Data States
   
-  const [homeLayout, setHomeLayout] = useState<HomeSection[]>([]);
-  const [isLoadingLayout, setIsLoadingLayout] = useState(true);
+  const [homeLayout, setHomeLayout] = useState<HomeSection[]>(defaultHomeLayout);
   const [productsList, setProductsList] = useState<Product[]>(mockProducts);
   const [categoriesList, setCategoriesList] = useState<any[]>(mockCategories);
   const [customFilters, setCustomFilters] = useState<any[]>([]);
@@ -79,9 +80,8 @@ export const Home: React.FC = () => {
   useEffect(() => {
     let active = true;
         api.getHomeLayout().then(res => {
-      if (active) {
+      if (active && res && res.length > 0) {
         setHomeLayout(res);
-        setIsLoadingLayout(false);
       }
     });
     api.getCategories().then(res => {
@@ -170,7 +170,7 @@ export const Home: React.FC = () => {
 
   // Extract Sections
   const renderHero = () => (
-    <section className="relative min-h-[95vh] lg:h-[85vh] bg-dark flex items-center overflow-hidden py-12 lg:py-0 w-full">
+    <section className="relative min-h-[95vh] lg:min-h-[70vh] lg:h-[70vh] bg-dark flex items-center overflow-hidden py-12 lg:py-0 w-full">
       {/* Luxury Mattress Background Overlay - Slider with Ken Burns */}
       <div className="absolute inset-0 z-0">
         {heroImages.map((img, idx) => (
@@ -199,7 +199,7 @@ export const Home: React.FC = () => {
               <span>{t('hero.badge')}</span>
             </div>
             
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
+            <h1 className="text-4xl sm:text-5xl lg:text-5xl font-extrabold tracking-tight leading-tight">
               {t('hero.title')}
             </h1>
             
@@ -228,7 +228,7 @@ export const Home: React.FC = () => {
           <div className="lg:col-span-5 w-full">
             <form 
               onSubmit={handleHeroSearch}
-              className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5"
+              className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-6 lg:p-5 shadow-2xl space-y-4"
               style={{ direction: isRtl ? 'rtl' : 'ltr' }}
             >
               <div className="border-b border-white/5 pb-3">
@@ -357,11 +357,11 @@ export const Home: React.FC = () => {
             <Link 
               key={brand.id}
               to={`/shop?brand=${brand.id}`} 
-              className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-md hover:border-gold/30 transition-premium flex flex-col items-center justify-center w-28 sm:w-36 h-28 sm:h-36 gap-3 group"
+              className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md hover:border-gold/30 transition-premium flex flex-col items-center justify-center w-28 sm:w-32 h-28 sm:h-32 gap-3 group"
             >
               <div className="flex-1 flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">
                 {brand.logo ? (
-                  <img src={brand.logo} alt={brand.name} className="max-h-12 max-w-full object-contain" />
+                  <img src={brand.logo} alt={brand.name} loading="lazy" className="max-h-12 max-w-full object-contain" />
                 ) : (
                   <span className="font-black text-xl text-center text-dark/80 group-hover:text-primary transition-colors tracking-tight">
                     {brand.name}
@@ -396,6 +396,7 @@ export const Home: React.FC = () => {
                 <img 
                   src={cat.image} 
                   alt={cat.name[language]} 
+                  loading="lazy"
                   className="w-full h-full object-cover group-hover:scale-105 transition-premium duration-500"
                 />
                 <div className="absolute inset-0 bg-dark/10 group-hover:bg-dark/0 transition-colors" />
@@ -461,13 +462,13 @@ export const Home: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
           <Link to={banners[0].link || '/shop'} className="group relative rounded-3xl overflow-hidden shadow-card hover:shadow-xl transition-premium block aspect-[2/1] sm:aspect-[21/9]">
-            <img src={banners[0].image_url} alt="Promo" className="w-full h-full object-cover group-hover:scale-105 transition-premium duration-500" />
+            <img src={banners[0].image_url} alt="Promo" loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-premium duration-500" />
             <div className="absolute inset-0 bg-gradient-to-t from-dark/80 to-transparent flex flex-col justify-end p-6 sm:p-8">
               <h3 className="text-white text-xl sm:text-3xl font-extrabold mb-2">{language === 'ar' ? banners[0].title_ar : banners[0].title_en}</h3>
             </div>
           </Link>
           <Link to={banners[1].link || '/shop'} className="group relative rounded-3xl overflow-hidden shadow-card hover:shadow-xl transition-premium block aspect-[2/1] sm:aspect-[21/9]">
-            <img src={banners[1].image_url} alt="Promo" className="w-full h-full object-cover group-hover:scale-105 transition-premium duration-500" />
+            <img src={banners[1].image_url} alt="Promo" loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-premium duration-500" />
             <div className="absolute inset-0 bg-gradient-to-t from-dark/80 to-transparent flex flex-col justify-end p-6 sm:p-8">
               <h3 className="text-white text-xl sm:text-3xl font-extrabold mb-2">{language === 'ar' ? banners[1].title_ar : banners[1].title_en}</h3>
             </div>
@@ -488,7 +489,7 @@ export const Home: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-stretch">
           {/* Side Banner */}
           <div className="lg:col-span-1 relative rounded-3xl overflow-hidden shadow-card group hidden lg:block h-full">
-            <img src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=800&auto=format&fit=crop" alt="Side Promo" className="w-full h-full object-cover group-hover:scale-105 transition-premium duration-700" />
+            <img src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=800&auto=format&fit=crop" alt="Side Promo" loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-premium duration-700" />
             <div className="absolute inset-0 bg-gradient-to-t from-dark/90 via-dark/40 to-transparent flex flex-col justify-end p-8 text-white">
               <span className="text-gold font-bold tracking-widest text-xs uppercase mb-2">New Arrival</span>
               <h3 className="text-3xl font-extrabold leading-tight mb-4">Ultimate<br/>Comfort</h3>
@@ -508,20 +509,24 @@ export const Home: React.FC = () => {
               const hasSale = currentVar ? !!currentVar.salePrice : !!prod.salePrice;
 
               return (
-              <div key={`${prod.id}-${index}`} className="w-[280px] sm:w-[320px] shrink-0 snap-start bg-white rounded-2xl border border-cream overflow-hidden shadow-card hover:shadow-xl transition-premium group flex flex-col justify-between">
-              <div className="relative h-64 overflow-hidden">
-                <img 
-                  src={prod.images[0]} 
-                  alt={prod.name[language]} 
-                  className={`w-full h-full object-cover transition-all duration-700 ${prod.images?.[1] ? 'group-hover:opacity-0 group-hover:scale-110' : 'group-hover:scale-[1.02]'}`}
-                />
-                {prod.images?.[1] && (
+              <div key={`${prod.id}-${index}`} className="w-[280px] sm:w-[280px] lg:w-[260px] shrink-0 snap-start bg-white rounded-2xl border border-cream overflow-hidden shadow-card hover:shadow-xl transition-premium group flex flex-col justify-between">
+              <div className="relative h-64 lg:h-52 overflow-hidden">
+                <Link to={`/product/${prod.slug}`} className="block w-full h-full">
                   <img 
-                    src={prod.images[1]} 
-                    alt={prod.name?.[language] || 'Alternate View'} 
-                    className="w-full h-full object-cover transition-all duration-700 absolute inset-0 opacity-0 scale-110 group-hover:opacity-100 group-hover:scale-100"
+                    src={prod.images[0]} 
+                    alt={prod.name[language]} 
+                    loading="lazy"
+                    className={`w-full h-full object-cover transition-all duration-700 ${prod.images?.[1] ? 'group-hover:opacity-0 group-hover:scale-110' : 'group-hover:scale-[1.02]'}`}
                   />
-                )}
+                  {prod.images?.[1] && (
+                    <img 
+                      src={prod.images[1]} 
+                      alt={prod.name?.[language] || 'Alternate View'} 
+                      loading="lazy"
+                      className="w-full h-full object-cover transition-all duration-700 absolute inset-0 opacity-0 scale-110 group-hover:opacity-100 group-hover:scale-100"
+                    />
+                  )}
+                </Link>
                 {prod.isBestSeller && (
                   <span className="absolute top-4 left-4 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                     {language === 'ar' ? 'الأكثر مبيعاً' : 'Best Seller'}
@@ -543,9 +548,11 @@ export const Home: React.FC = () => {
                       <span className="text-xs font-bold text-dark">{prod.rating}</span>
                     </div>
                   </div>
-                  <h3 className="font-bold text-lg text-dark group-hover:text-primary transition-colors leading-snug">
-                    {prod.name[language]}
-                  </h3>
+                  <Link to={`/product/${prod.slug}`}>
+                    <h3 className="font-bold text-lg text-dark group-hover:text-primary transition-colors leading-snug">
+                      {prod.name[language]}
+                    </h3>
+                  </Link>
                   <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">
                     {prod.shortDescription[language]}
                   </p>
@@ -586,12 +593,15 @@ export const Home: React.FC = () => {
                   </div>
                   
                   <div className="flex flex-col gap-2">
-                    <Link 
-                      to={`/product/${prod.slug}`} 
-                      className="bg-primary hover:bg-primary-dark text-white text-center font-bold py-2.5 px-4 rounded-xl text-xs shadow-sm hover:shadow transition-premium"
+                    <button 
+                      onClick={() => {
+                        const varId = selectedVarId || prod.variations?.[0]?.id;
+                        if (varId) addToCart(prod, varId, 1);
+                      }}
+                      className="bg-primary hover:bg-primary-dark text-white text-center font-bold py-2.5 px-4 rounded-xl text-xs shadow-sm hover:shadow transition-premium cursor-pointer"
                     >
-                      {language === 'ar' ? 'تسوق الآن' : 'Shop Now'}
-                    </Link>
+                      {language === 'ar' ? 'أضف إلى السلة' : 'Add to Cart'}
+                    </button>
                     <Link 
                       to="/quotation" 
                       className="bg-cream hover:bg-cream/80 text-primary border border-primary/5 text-center font-bold py-2.5 px-4 rounded-xl text-xs transition-premium"
@@ -615,6 +625,7 @@ export const Home: React.FC = () => {
         <img 
           src="https://images.unsplash.com/photo-1540518614846-7eded433c457?q=80&w=1200&auto=format&fit=crop" 
           alt="Wide Promo"
+          loading="lazy"
           className="w-full h-full object-cover aspect-[21/9] sm:aspect-[4/1] group-hover:scale-[1.02] transition-premium duration-700"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-dark/90 via-dark/60 to-transparent flex flex-col justify-center p-8 sm:p-16 text-white" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
@@ -658,6 +669,7 @@ export const Home: React.FC = () => {
           <img 
             src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=800&auto=format&fit=crop" 
             alt="Luxury bedroom set" 
+            loading="lazy"
             className="w-full h-full object-cover"
           />
         </div>
@@ -811,18 +823,20 @@ export const Home: React.FC = () => {
                 return (
                 <div key={`${prod.id}-${index}`} className="w-[280px] sm:w-[320px] shrink-0 snap-start bg-white rounded-2xl border border-cream overflow-hidden shadow-card hover:shadow-xl transition-premium group flex flex-col justify-between">
               <div className="relative h-64 overflow-hidden">
-                <img 
-                  src={prod.images[0]} 
-                  alt={prod.name[language]} 
-                  className={`w-full h-full object-cover transition-all duration-700 ${prod.images?.[1] ? 'group-hover:opacity-0 group-hover:scale-110' : 'group-hover:scale-[1.02]'}`}
-                />
-                {prod.images?.[1] && (
+                <Link to={`/product/${prod.slug}`} className="block w-full h-full">
                   <img 
-                    src={prod.images[1]} 
-                    alt={prod.name?.[language] || 'Alternate View'} 
-                    className="w-full h-full object-cover transition-all duration-700 absolute inset-0 opacity-0 scale-110 group-hover:opacity-100 group-hover:scale-100"
+                    src={prod.images[0]} 
+                    alt={prod.name[language]} 
+                    className={`w-full h-full object-cover transition-all duration-700 ${prod.images?.[1] ? 'group-hover:opacity-0 group-hover:scale-110' : 'group-hover:scale-[1.02]'}`}
                   />
-                )}
+                  {prod.images?.[1] && (
+                    <img 
+                      src={prod.images[1]} 
+                      alt={prod.name?.[language] || 'Alternate View'} 
+                      className="w-full h-full object-cover transition-all duration-700 absolute inset-0 opacity-0 scale-110 group-hover:opacity-100 group-hover:scale-100"
+                    />
+                  )}
+                </Link>
                 {prod.isBestSeller && (
                   <span className="absolute top-4 left-4 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                     {language === 'ar' ? 'الأكثر مبيعاً' : 'Best Seller'}
@@ -915,13 +929,7 @@ export const Home: React.FC = () => {
     );
   };
 
-  if (isLoadingLayout) {
-    return (
-      <div className="bg-light min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="bg-light min-h-screen pb-20">

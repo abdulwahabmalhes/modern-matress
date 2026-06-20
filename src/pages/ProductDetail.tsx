@@ -227,27 +227,10 @@ export const ProductDetail: React.FC = () => {
                 {product.name?.[language] || 'Product'}
               </h1>
               
-              {/* Rating */}
-              <div className="flex items-center gap-1">
-                <div className="flex text-amber-400 gap-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <Star 
-                      key={i} 
-                      className={`w-4 h-4 ${i < Math.floor(product.rating) ? 'fill-current' : ''}`} 
-                    />
-                  ))}
-                </div>
-                <span className="text-xs font-bold text-dark ml-1">{product.rating}</span>
-                <span className="text-xs text-gray-400">({product.reviewCount} {language === 'ar' ? 'تقييم' : 'reviews'})</span>
-              </div>
+
             </div>
 
-            {/* Short Desc */}
-            <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-semibold">
-              {product.shortDescription?.[language] || ''}
-            </p>
 
-            <hr className="border-cream" />
 
             {/* Price section */}
             <div className="space-y-1">
@@ -263,23 +246,51 @@ export const ProductDetail: React.FC = () => {
               </p>
             </div>
 
+            {/* Dynamic Product Attributes moved below price */}
+            {product && (product as any).attributes && (product as any).attributes.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+                {(() => {
+                  const validAttributes = (product as any).attributes.filter((attr: any) => {
+                    const gName = language === 'ar' ? attr.groupNameAr : attr.groupNameEn;
+                    const v = language === 'ar' ? attr.valueAr : attr.valueEn;
+                    return gName && v;
+                  });
+                  
+                  return validAttributes.map((attr: any, idx: number) => {
+                    const groupName = language === 'ar' ? attr.groupNameAr : attr.groupNameEn;
+                    const value = language === 'ar' ? attr.valueAr : attr.valueEn;
+                    
+                    return (
+                      <div key={idx} className="flex flex-col items-center justify-center text-center gap-1.5 p-3 rounded-xl bg-slate-50 border border-cream shadow-sm hover:border-primary/30 transition-colors">
+                        <div className="text-primary flex-shrink-0">
+                          {getIconForSpec(attr.groupNameEn)}
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-[9px] text-gray-400 font-extrabold uppercase tracking-widest leading-tight">{groupName}</p>
+                          <p className="text-xs font-bold text-dark leading-tight">{value}</p>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            )}
+
             {/* Variation selector */}
             <div className="space-y-3">
               <h3 className="font-extrabold text-xs text-dark uppercase tracking-wider">{t('product.size')}</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {product.variations.map(vari => (
-                  <button
-                    key={vari.id}
-                    onClick={() => setSelectedVariationId(vari.id)}
-                    className={`border px-3 py-2.5 rounded-xl text-xs font-bold text-center transition-premium ${
-                      selectedVariationId === vari.id
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-cream bg-white text-dark hover:border-primary/30'
-                    }`}
-                  >
-                    {vari.size}
-                  </button>
-                ))}
+              <div className="relative bg-white border border-cream hover:border-primary/30 rounded-xl shadow-sm transition-premium overflow-hidden">
+                <select
+                  value={selectedVariationId}
+                  onChange={(e) => setSelectedVariationId(e.target.value)}
+                  className="w-full bg-transparent text-sm font-bold text-dark py-3.5 px-4 focus:outline-none appearance-none cursor-pointer"
+                  style={{ textAlignLast: isRtl ? 'right' : 'left' }}
+                >
+                  {product.variations.map(vari => (
+                    <option key={vari.id} value={vari.id}>{vari.size}</option>
+                  ))}
+                </select>
+                <ChevronDown className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none ${isRtl ? 'left-4' : 'right-4'}`} />
               </div>
             </div>
 
@@ -373,53 +384,7 @@ export const ProductDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Dynamic Product Attributes (Important Specs Frame) - Full Width Horizontal */}
-        {product && (product as any).attributes && (product as any).attributes.length > 0 && (
-          <section className="bg-white border border-cream rounded-3xl p-6 md:p-8 shadow-sm" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
-            <h3 className="text-xl font-extrabold text-dark mb-6 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-primary" />
-              {language === 'ar' ? 'المواصفات الرئيسية' : 'Key Specifications'}
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {(() => {
-                const validAttributes = (product as any).attributes.filter((attr: any) => {
-                  const gName = language === 'ar' ? attr.groupNameAr : attr.groupNameEn;
-                  const v = language === 'ar' ? attr.valueAr : attr.valueEn;
-                  return gName && v;
-                });
-                
-                return validAttributes.map((attr: any, idx: number) => {
-                  const groupName = language === 'ar' ? attr.groupNameAr : attr.groupNameEn;
-                  const value = language === 'ar' ? attr.valueAr : attr.valueEn;
-                  
-                  return (
-                    <div key={idx} className="flex flex-col gap-3 p-4 rounded-2xl bg-slate-50 hover:bg-primary/5 transition-colors group h-full border border-transparent hover:border-primary/10">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center text-primary shrink-0 group-hover:scale-110 transition-transform">
-                          {getIconForSpec(attr.groupNameEn)}
-                        </div>
-                        <p className="text-[11px] text-gray-500 font-extrabold uppercase tracking-widest leading-tight">{groupName}</p>
-                      </div>
-                      <div className="flex-1 mt-1">
-                        {value.includes(',') ? (
-                          <div className="flex flex-wrap gap-1.5">
-                            {value.split(',').map((v: string, i: number) => (
-                              <span key={i} className="bg-white border border-slate-200 text-[11px] font-bold px-2 py-1 rounded-lg text-dark shadow-sm">
-                                {v.trim()}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm font-extrabold text-dark break-words">{value}</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
-          </section>
-        )}
+
 
         {/* KEY FEATURES SECTION */}
         {product.keyFeatures && product.keyFeatures.length > 0 && (

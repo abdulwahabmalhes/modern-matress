@@ -30,7 +30,7 @@ export const Checkout: React.FC = () => {
   const [notes, setNotes] = useState('');
   
   // Payment States
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cod' | 'tabby' | 'paypal'>('card');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cod' | 'tabby' | 'paypal' | 'ziina'>('card');
   const [cardNo, setCardNo] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvc, setCardCvc] = useState('');
@@ -51,6 +51,9 @@ export const Checkout: React.FC = () => {
   const [tabbyStatus, setTabbyStatus] = useState<'idle' | 'otp' | 'success'>('idle');
   const [tabbyOtp, setTabbyOtp] = useState('');
 
+  const [showZiinaModal, setShowZiinaModal] = useState(false);
+  const [ziinaStatus, setZiinaStatus] = useState<'idle' | 'processing' | 'success'>('idle');
+
   const handleCheckoutSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !phone || !address || !city) return;
@@ -69,9 +72,16 @@ export const Checkout: React.FC = () => {
           finalizeOrder('paid');
         }, 1500);
       }, 2500);
-    } else if (paymentMethod === 'paypal') {
-      setShowPaypalModal(true);
-      setPaypalStatus('login');
+    } else if (paymentMethod === 'ziina') {
+      setShowZiinaModal(true);
+      setZiinaStatus('processing');
+      setTimeout(() => {
+        setZiinaStatus('success');
+        setTimeout(() => {
+          setShowZiinaModal(false);
+          finalizeOrder('paid');
+        }, 1500);
+      }, 2500);
     } else if (paymentMethod === 'tabby') {
       setShowTabbyModal(true);
       setTabbyStatus('otp');
@@ -406,7 +416,7 @@ export const Checkout: React.FC = () => {
                 <div className="space-y-3">
                   {[
                     { id: 'card', name: t('checkout.payment.card'), desc: 'Stripe Secure Credit Card' },
-                    { id: 'paypal', name: 'PayPal Sandbox', desc: 'Secure Express PayPal' },
+                    { id: 'ziina', name: 'Ziina (زينة)', desc: 'Fast & Secure UAE Payment' },
                     { id: 'tabby', name: t('checkout.payment.tabby'), desc: 'Split in 4 payments' },
                     { id: 'cod', name: t('checkout.payment.cod'), desc: 'Cash on delivery hand-off' },
                   ].map(method => (
@@ -595,6 +605,39 @@ export const Checkout: React.FC = () => {
               <p className="text-xs font-bold text-[#3cd5a7]">OTP Verified! Splitting payment in 4 installments...</p>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ZIINA POPUP SIMULATOR DIALOG */}
+      <Dialog open={showZiinaModal} onOpenChange={setShowZiinaModal}>
+        <DialogContent className="bg-white max-w-sm w-full rounded-3xl p-0 text-dark overflow-hidden shadow-2xl border border-cream" showCloseButton={false}>
+          <div className="bg-[#6B21A8] p-6 text-center text-white space-y-2">
+            <div className="flex justify-center mb-2">
+              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-2xl text-[#6B21A8]">Z</div>
+            </div>
+            <DialogTitle className="text-xl font-black tracking-tight text-white">
+              Ziina Pay
+            </DialogTitle>
+            <DialogDescription className="text-white/80 font-bold text-sm">
+              Paying {cartTotal} AED
+            </DialogDescription>
+          </div>
+          
+          <div className="p-8 text-center space-y-4">
+            {ziinaStatus === 'processing' ? (
+              <>
+                <Loader2 className="w-12 h-12 mx-auto text-[#6B21A8] animate-spin" />
+                <p className="text-sm font-bold text-gray-500">Processing secure payment via UAE Central Bank...</p>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <p className="text-sm font-bold text-emerald-600">Payment Successful! Redirecting...</p>
+              </>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -33,6 +33,7 @@ class ApiController extends Controller
             'name_ar' => 'required|string',
             'image_url' => 'nullable|string',
             'parent_id' => 'nullable|integer',
+            'icon' => 'nullable|string',
         ]);
 
         $slug = Str::slug($validated['name_en']);
@@ -43,6 +44,7 @@ class ApiController extends Controller
             'name_ar' => $validated['name_ar'],
             'image_url' => $validated['image_url'] ?? 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=600&auto=format&fit=crop',
             'parent_id' => $validated['parent_id'] ?? null,
+            'icon' => $validated['icon'] ?? 'Box',
         ]);
 
         return response()->json($category, 201);
@@ -57,6 +59,7 @@ class ApiController extends Controller
             'name_en' => 'sometimes|string',
             'name_ar' => 'sometimes|string',
             'image_url' => 'nullable|string',
+            'icon' => 'nullable|string',
         ]);
 
         if (isset($validated['name_en'])) {

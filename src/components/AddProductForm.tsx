@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { api } from '../lib/api';
 import { 
   X, Image, Info, Tag, Star, List, UploadCloud, 
-  CheckCircle2, Plus, Trash2, RefreshCw,
+  CheckCircle2, Plus, Trash2, RefreshCw, PlusCircle,
   Thermometer, Activity, Users, Shield, Award, Droplet, Box, 
   Wind, Zap, Moon, Sun, Heart, Flame,
-  Bed, Check, LayoutGrid
+  Bed, Check, LayoutGrid, Home, ShoppingBag
 } from 'lucide-react';
 
 interface AddProductFormProps {
@@ -55,21 +56,22 @@ export const AddProductForm: React.FC<AddProductFormProps> = ({ categories, init
   // Dedicated Specs State
   const [specFirmness, setSpecFirmness] = useState('Medium');
   const [specHeight, setSpecHeight] = useState('30');
-  const [specWarranty, setSpecWarranty] = useState('10 YR WARRANTY');
+  const [specWarranty, setSpecWarranty] = useState('10 Years');
+  const [specWarrantyCustom, setSpecWarrantyCustom] = useState('');
   const [specReturns, setSpecReturns] = useState('10 Days');
   const [specReturnsCustom, setSpecReturnsCustom] = useState('');
   const [specStructure, setSpecStructure] = useState<string[]>([]);
-  const [specSizes, setSpecSizes] = useState<string[]>([]);
+  const [customSpecs, setCustomSpecs] = useState<{nameEn: string; nameAr: string; valueEn: string; valueAr: string}[]>([]);
   const [specNewborn, setSpecNewborn] = useState('');
   const [specDimensions, setSpecDimensions] = useState<string[]>([]);
-  const [specDimensionsCustom, setSpecDimensionsCustom] = useState('');
   const [specColors, setSpecColors] = useState('');
 
   const [variationsData, setVariationsData] = useState<Record<string, { price: string, salePrice: string, stock: string }>>({});
 
   const structureOptions = ['Bonnel Springs', 'Pocket Springs', 'No Springs', 'Memory Foam', 'Natural Latex', 'Foam', 'Gel Foam', 'Pillow Top', 'Medical', 'Orthopaedic', 'Hybrid Mattress'];
-  const sizeOptions = ['Single', 'Double', 'Queen', 'King', 'Super King', 'Newborn'];
-  const dimensionOptions = ['90x190', '90x200', '100x200', '120x190', '140x190', '140x200', '150x190', '150x200', '155x205'];
+
+  const [dimOptions, setDimOptions] = useState(['90x190', '90x200', '100x200', '120x190', '140x190', '140x200', '150x190', '150x200', '155x205']);
+  const [newDimInput, setNewDimInput] = useState('');
 
   const icons = [
     { name: 'Thermometer', component: Thermometer },
@@ -88,13 +90,7 @@ export const AddProductForm: React.FC<AddProductFormProps> = ({ categories, init
     { name: 'Check', component: Check }
   ];
 
-  const categoryIcons: Record<string, any> = {
-    'mattresses': Bed,
-    'beds': Box,
-    'pillows': Wind,
-    'furniture': Award,
-    'accessories': Star
-  };
+
 
   const handleAddFeature = () => {
     setKeyFeatures([...keyFeatures, { title: '', description: '', icon: 'Check' }]);
@@ -144,12 +140,20 @@ export const AddProductForm: React.FC<AddProductFormProps> = ({ categories, init
       }
 
       if (initialData.attributes && initialData.attributes.length > 0) {
+        const customList: typeof customSpecs = [];
         initialData.attributes.forEach((attr: any) => {
           const val = attr.valueEn || '';
           switch (attr.groupNameEn) {
             case 'Firmness': setSpecFirmness(val); break;
             case 'Height (cm)': setSpecHeight(val); break;
-            case 'Warranty': setSpecWarranty(val); break;
+            case 'Warranty':
+              if (['1 Year', '2 Years', '5 Years', '10 Years', '10 YR WARRANTY'].includes(val)) {
+                setSpecWarranty(val === '10 YR WARRANTY' ? '10 Years' : val);
+                setSpecWarrantyCustom('');
+              } else {
+                setSpecWarrantyCustom(val);
+              }
+              break;
             case 'Returns Period':
               if (['7 Days', '10 Days', '30 Days', 'No Returns'].includes(val)) {
                 setSpecReturns(val);
@@ -161,26 +165,33 @@ export const AddProductForm: React.FC<AddProductFormProps> = ({ categories, init
             case 'Structure':
               setSpecStructure(val.split(',').map((s: string) => s.trim()).filter(Boolean));
               break;
-            case 'Standard Sizes':
-              setSpecSizes(val.split(',').map((s: string) => s.trim()).filter(Boolean));
-              break;
             case 'Newborn Sub-sizes':
               setSpecNewborn(val);
               break;
             case 'Numeric Dimensions': {
               const dims = val.split(',').map((s: string) => s.trim()).filter(Boolean);
-              const dimensionOptions = ['90x190', '90x200', '100x200', '120x190', '140x190', '140x200', '150x190', '150x200', '155x205'];
-              const stdDims = dims.filter((d: string) => dimensionOptions.includes(d));
-              const customDims = dims.filter((d: string) => !dimensionOptions.includes(d));
-              setSpecDimensions(stdDims);
-              setSpecDimensionsCustom(customDims.join(', '));
+              setDimOptions(prev => {
+                const updated = [...prev];
+                dims.forEach((d: string) => { if (!updated.includes(d)) updated.push(d); });
+                return updated;
+              });
+              setSpecDimensions(dims);
               break;
             }
             case 'Available Colors':
               setSpecColors(val);
               break;
+            default:
+              customList.push({
+                nameEn: attr.groupNameEn || '',
+                nameAr: attr.groupNameAr || '',
+                valueEn: attr.valueEn || '',
+                valueAr: attr.valueAr || ''
+              });
+              break;
           }
         });
+        setCustomSpecs(customList);
       }
 
       if (initialData.variations && initialData.variations.length > 0) {
@@ -267,17 +278,21 @@ export const AddProductForm: React.FC<AddProductFormProps> = ({ categories, init
 
     if (specFirmness) addAttr('Firmness', 'مستوى الصلابة', specFirmness, specFirmness);
     if (specHeight) addAttr('Height (cm)', 'الارتفاع (سم)', specHeight, specHeight);
-    if (specWarranty) addAttr('Warranty', 'الضمان', specWarranty, specWarranty);
+    const warrantyVal = specWarrantyCustom ? specWarrantyCustom : specWarranty;
+    if (warrantyVal) addAttr('Warranty', 'الضمان', warrantyVal, warrantyVal);
     
     const returnsVal = specReturnsCustom ? `${specReturnsCustom} days` : specReturns;
     if (returnsVal) addAttr('Returns Period', 'فترة الاسترجاع', returnsVal, returnsVal);
     
     if (specStructure.length) addAttr('Structure', 'التركيب', specStructure.join(', '), specStructure.join(', '));
-    if (specSizes.length) addAttr('Standard Sizes', 'المقاسات القياسية', specSizes.join(', '), specSizes.join(', '));
+    customSpecs.forEach(spec => {
+      if (spec.nameEn && spec.valueEn) {
+        addAttr(spec.nameEn, spec.nameAr || spec.nameEn, spec.valueEn, spec.valueAr || spec.valueEn);
+      }
+    });
     if (specNewborn) addAttr('Newborn Sub-sizes', 'مقاسات المواليد', specNewborn, specNewborn);
     
     const dims = [...specDimensions];
-    if (specDimensionsCustom) dims.push(...specDimensionsCustom.split(',').map(s=>s.trim()).filter(Boolean));
     if (dims.length) addAttr('Numeric Dimensions', 'الأبعاد الرقمية', dims.join(', '), dims.join(', '));
     
     if (specColors) addAttr('Available Colors', 'الألوان المتاحة', specColors, specColors);
@@ -306,7 +321,7 @@ export const AddProductForm: React.FC<AddProductFormProps> = ({ categories, init
       basePrice: finalVariations[0].price,
       salePrice: finalVariations[0].salePrice,
       firmness: specFirmness ? specFirmness.toLowerCase() : 'medium',
-      warrantyMonths: parseInt(specWarranty) || 120,
+      warrantyMonths: parseInt(warrantyVal) || 120,
       shortDescriptionEn: prodDescEn.substring(0, 100),
       shortDescriptionAr: prodDescAr.substring(0, 100),
       descriptionEn: prodDescEn,
@@ -340,9 +355,9 @@ export const AddProductForm: React.FC<AddProductFormProps> = ({ categories, init
     ? Math.round(((Number(prodBasePrice) - Number(prodSalePrice)) / Number(prodBasePrice)) * 100)
     : 0;
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-center p-0 md:p-4 bg-black/40 backdrop-blur-sm overflow-y-auto" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
-      <div className="bg-white w-full max-w-5xl md:rounded-3xl shadow-2xl flex flex-col my-auto animate-slideUp border border-cream">
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex justify-center items-start p-0 md:p-8 bg-black/40 backdrop-blur-sm overflow-y-auto" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+      <div className="bg-white w-full max-w-5xl md:rounded-3xl shadow-2xl flex flex-col min-h-screen md:min-h-0 animate-slideUp border border-cream">
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-cream flex justify-between items-center bg-white sticky top-0 z-10 md:rounded-t-3xl">
@@ -446,13 +461,14 @@ export const AddProductForm: React.FC<AddProductFormProps> = ({ categories, init
                       <span>القسم الرئيسي *</span>
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                      {categories.map(cat => {
-                        const Icon = categoryIcons[cat.id] || Box;
+                      {categories.filter(c => !c.parent_id).map(cat => {
+                        const Icon = cat.icon ? ({ Box, Bed, Star, Award, Wind, Home, ShoppingBag, Tag } as any)[cat.icon] || Box : Box;
+                        const isSelected = prodCategoryId === String(cat.id);
                         return (
                           <label key={cat.id} className="cursor-pointer">
                             <input 
                               type="radio" name="category" className="peer sr-only"
-                              checked={prodCategoryId === cat.id}
+                              checked={isSelected}
                               onChange={() => setProdCategoryId(cat.id)}
                             />
                             <div className="border border-cream rounded-xl p-4 text-center hover:border-primary hover:bg-primary/5 transition-all peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:shadow-sm">
@@ -557,12 +573,14 @@ export const AddProductForm: React.FC<AddProductFormProps> = ({ categories, init
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">WARRANTY</label>
-                      <select value={specWarranty} onChange={e=>setSpecWarranty(e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-dark focus:outline-none focus:border-primary">
-                        <option>1 Year</option>
-                        <option>2 Years</option>
-                        <option>5 Years</option>
-                        <option>10 YR WARRANTY</option>
-                      </select>
+                      <div className="flex flex-wrap gap-2">
+                        {['1 Year', '2 Years', '5 Years', '10 Years'].map(w => (
+                          <button type="button" key={w} onClick={() => { setSpecWarranty(w); setSpecWarrantyCustom(''); }} className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all border ${specWarranty === w && !specWarrantyCustom ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:border-amber-300'}`}>{w}</button>
+                        ))}
+                        <div className="flex items-center gap-2 mt-1 w-full">
+                          <input type="text" placeholder="...أو اكتب ضمان مخصص" value={specWarrantyCustom} onChange={e=>setSpecWarrantyCustom(e.target.value)} className="w-full text-xs font-bold border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-primary" />
+                        </div>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">RETURNS PERIOD</label>
@@ -597,49 +615,46 @@ export const AddProductForm: React.FC<AddProductFormProps> = ({ categories, init
                     </div>
                   </div>
 
-                  {/* Standard Sizes & Numeric Dimensions Row */}
+                  {/* Dimensions Row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-slate-100 pt-6">
-                    <div className="space-y-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">STANDARD SIZES (TEXT)</label>
-                        <select multiple value={specSizes} onChange={e => {
-                          const selected = Array.from(e.target.selectedOptions, option => option.value);
-                          setSpecSizes(selected);
-                        }} className="w-full h-44 bg-slate-50/50 border border-gray-200 rounded-xl p-3 text-sm font-medium text-dark focus:outline-none focus:border-primary custom-scrollbar">
-                          {sizeOptions.map(sz => <option key={sz} value={sz} className="py-1.5 px-2 hover:bg-white rounded-md mb-0.5">{sz}</option>)}
-                        </select>
-                        <p className="text-[10px] text-gray-400">Ctrl+Click (أو Cmd+Click) لاختيار أكثر من حجم</p>
-                      </div>
-                      
-                      <div className="space-y-2 bg-slate-50 border border-slate-100 p-4 rounded-xl">
-                        <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">NEWBORN SUB-SIZES <span className="text-gray-400 font-normal lowercase">(comma separated)</span></label>
-                        <input type="text" value={specNewborn} onChange={e=>setSpecNewborn(e.target.value)} placeholder="0-3 Months, 3-6 Months, 6-12 Months" className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-primary" />
-                      </div>
-                    </div>
-
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">NUMERIC DIMENSIONS <span className="text-gray-400 font-normal lowercase">(اختر من القائمة)</span></label>
+                        <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">DIMENSIONS (المقاسات) <span className="text-gray-400 font-normal lowercase">(اختر من القائمة)</span></label>
                         <div className="flex">
                           <select multiple value={specDimensions} onChange={e => {
                             const selected = Array.from(e.target.selectedOptions, option => option.value);
                             setSpecDimensions(selected);
                           }} className="w-full h-44 bg-slate-50/50 border border-gray-200 rounded-l-xl border-r-0 p-3 text-sm font-medium text-dark focus:outline-none focus:border-primary custom-scrollbar">
-                            {dimensionOptions.map(dim => <option key={dim} value={dim} className="py-1.5 px-2 hover:bg-white rounded-md mb-0.5">{dim}</option>)}
+                            {dimOptions.map(dim => <option key={dim} value={dim} className="py-1.5 px-2 hover:bg-white rounded-md mb-0.5">{dim}</option>)}
                           </select>
                           <div className="w-2 bg-amber-700/80 rounded-r-xl border border-gray-200 border-l-0"></div>
                         </div>
                         <p className="text-[10px] text-gray-400">Ctrl+Click لاختيار أكثر من قياس</p>
                       </div>
                       
-                      <input type="text" value={specDimensionsCustom} onChange={e=>setSpecDimensionsCustom(e.target.value)} placeholder="قياسات إضافية (comma separated): 90x190" className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-primary mt-2 shadow-sm" />
+                      <div className="flex gap-2 mt-2">
+                        <input type="text" value={newDimInput} onChange={e=>setNewDimInput(e.target.value)} placeholder="إضافة مقاس جديد (مثال: 200x200)" className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-primary shadow-sm" />
+                        <button type="button" onClick={() => {
+                          if (newDimInput.trim() && !dimOptions.includes(newDimInput.trim())) {
+                            setDimOptions([...dimOptions, newDimInput.trim()]);
+                            setSpecDimensions([...specDimensions, newDimInput.trim()]);
+                            setNewDimInput('');
+                          }
+                        }} className="bg-primary text-white px-4 rounded-xl font-bold text-sm hover:bg-primary/90">إضافة</button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div className="space-y-2 bg-slate-50 border border-slate-100 p-4 rounded-xl">
+                        <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">NEWBORN SUB-SIZES <span className="text-gray-400 font-normal lowercase">(comma separated)</span></label>
+                        <input type="text" value={specNewborn} onChange={e=>setSpecNewborn(e.target.value)} placeholder="0-3 Months, 3-6 Months, 6-12 Months" className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-primary" />
+                      </div>
                     </div>
                   </div>
 
                   {/* Prices by Dimension */}
                   {(() => {
                     const allDims = [...specDimensions];
-                    if (specDimensionsCustom) allDims.push(...specDimensionsCustom.split(',').map(s=>s.trim()).filter(Boolean));
                     if (allDims.length === 0) return null;
                     
                     return (
@@ -703,6 +718,44 @@ export const AddProductForm: React.FC<AddProductFormProps> = ({ categories, init
                   <div className="space-y-2 border-t border-slate-100 pt-6">
                     <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">AVAILABLE COLORS <span className="text-gray-400 font-normal lowercase">(comma separated)</span></label>
                     <input type="text" value={specColors} onChange={e=>setSpecColors(e.target.value)} placeholder="White, Beige, Grey, Charcoal" className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-primary" />
+                  </div>
+
+                  {/* Custom Specs */}
+                  <div className="space-y-4 border-t border-slate-100 pt-6">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                        <PlusCircle className="w-3.5 h-3.5" /> CUSTOM SPECIFICATIONS <span className="text-gray-400 font-normal lowercase">(مواصفات إضافية)</span>
+                      </label>
+                      <button type="button" onClick={() => setCustomSpecs([...customSpecs, {nameEn: '', nameAr: '', valueEn: '', valueAr: ''}])} className="text-xs font-bold text-primary hover:text-primary/80 flex items-center gap-1 bg-primary/10 px-3 py-1.5 rounded-lg">
+                        <Plus className="w-3.5 h-3.5" /> Add Specification
+                      </button>
+                    </div>
+                    
+                    {customSpecs.length > 0 ? (
+                      <div className="space-y-3">
+                        {customSpecs.map((spec, index) => (
+                          <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <div className="md:col-span-5 space-y-2">
+                              <input type="text" value={spec.nameEn} onChange={e => { const newSpecs = [...customSpecs]; newSpecs[index].nameEn = e.target.value; setCustomSpecs(newSpecs); }} placeholder="Spec Name (English)" className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:border-primary" />
+                              <input type="text" value={spec.nameAr} onChange={e => { const newSpecs = [...customSpecs]; newSpecs[index].nameAr = e.target.value; setCustomSpecs(newSpecs); }} placeholder="اسم المواصفة (عربي)" className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:border-primary text-right" dir="rtl" />
+                            </div>
+                            <div className="md:col-span-6 space-y-2">
+                              <input type="text" value={spec.valueEn} onChange={e => { const newSpecs = [...customSpecs]; newSpecs[index].valueEn = e.target.value; setCustomSpecs(newSpecs); }} placeholder="Value (English)" className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:border-primary" />
+                              <input type="text" value={spec.valueAr} onChange={e => { const newSpecs = [...customSpecs]; newSpecs[index].valueAr = e.target.value; setCustomSpecs(newSpecs); }} placeholder="القيمة (عربي)" className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:border-primary text-right" dir="rtl" />
+                            </div>
+                            <div className="md:col-span-1 flex justify-center md:pt-2">
+                              <button type="button" onClick={() => setCustomSpecs(customSpecs.filter((_, i) => i !== index))} className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-gray-300">
+                        <p className="text-sm text-gray-500 font-medium">No custom specifications added.</p>
+                      </div>
+                    )}
                   </div>
 
                 </div>
@@ -902,7 +955,8 @@ export const AddProductForm: React.FC<AddProductFormProps> = ({ categories, init
         </form>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

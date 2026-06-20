@@ -2,8 +2,12 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ApiController;
+use App\Http\Controllers\SettingController;
 
 Route::prefix('v1')->group(function () {
+    // Settings (API Keys, Configurations)
+    Route::get('/settings', [SettingController::class, 'getSettings']);
+    Route::post('/settings', [SettingController::class, 'saveSettings']);
     // Categories
     Route::get('/categories', [ApiController::class, 'getCategories']);
     Route::post('/categories', [ApiController::class, 'storeCategory']);

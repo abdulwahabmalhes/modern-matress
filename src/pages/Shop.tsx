@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 
 export const Shop: React.FC = () => {
   const { language, t, isRtl } = useLanguage();
-  const { toggleCompare, compareList, clearCompare, toggleWishlist, isInWishlist } = useCart();
+  const { toggleCompare, compareList, clearCompare, toggleWishlist, isInWishlist, addToCart } = useCart();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // API Data States
@@ -401,18 +401,20 @@ export const Shop: React.FC = () => {
                   return (
                     <div key={prod.id} className="bg-white border border-cream rounded-2xl overflow-hidden shadow-card hover:shadow-xl transition-premium group flex flex-col justify-between">
                       <div className="relative h-56 overflow-hidden">
-                        <img 
-                          src={prod.images?.[0] || 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=800&auto=format&fit=crop'} 
-                          alt={prod.name?.[language] || 'Product'} 
-                          className={`w-full h-full object-cover transition-all duration-700 ${prod.images?.[1] ? 'group-hover:opacity-0 group-hover:scale-110' : 'group-hover:scale-105'}`}
-                        />
-                        {prod.images?.[1] && (
+                        <Link to={`/product/${prod.slug}`} className="block w-full h-full">
                           <img 
-                            src={prod.images[1]} 
-                            alt={prod.name?.[language] || 'Alternate View'} 
-                            className="w-full h-full object-cover transition-all duration-700 absolute inset-0 opacity-0 scale-110 group-hover:opacity-100 group-hover:scale-100"
+                            src={prod.images?.[0] || 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=800&auto=format&fit=crop'} 
+                            alt={prod.name?.[language] || 'Product'} 
+                            className={`w-full h-full object-cover transition-all duration-700 ${prod.images?.[1] ? 'group-hover:opacity-0 group-hover:scale-110' : 'group-hover:scale-105'}`}
                           />
-                        )}
+                          {prod.images?.[1] && (
+                            <img 
+                              src={prod.images[1]} 
+                              alt={prod.name?.[language] || 'Alternate View'} 
+                              className="w-full h-full object-cover transition-all duration-700 absolute inset-0 opacity-0 scale-110 group-hover:opacity-100 group-hover:scale-100"
+                            />
+                          )}
+                        </Link>
                         <button
                           onClick={() => toggleCompare(prod)}
                           className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} p-2 rounded-full shadow-md backdrop-blur-md transition-all ${
@@ -456,9 +458,11 @@ export const Shop: React.FC = () => {
                               <span className="text-xs font-bold text-dark">{prod.rating}</span>
                             </div>
                           </div>
-                          <h3 className="font-bold text-base text-dark group-hover:text-primary transition-colors leading-snug">
-                            {prod.name?.[language] || 'Product'}
-                          </h3>
+                          <Link to={`/product/${prod.slug}`}>
+                            <h3 className="font-bold text-base text-dark group-hover:text-primary transition-colors leading-snug">
+                              {prod.name?.[language] || 'Product'}
+                            </h3>
+                          </Link>
                           {prod.attributes && prod.attributes.length > 0 && (
                             <div className="flex flex-wrap gap-2 pt-1">
                               {prod.attributes.slice(0, 3).map((attr: any, idx: number) => (
@@ -495,12 +499,15 @@ export const Shop: React.FC = () => {
                             )}
                           </div>
                           <div className="flex flex-col gap-2">
-                            <Link 
-                              to={`/product/${prod.slug}`}
-                              className="bg-primary hover:bg-primary-dark text-white text-center font-bold py-2 rounded-xl text-[11px] shadow-sm transition-premium"
+                            <button 
+                              onClick={() => {
+                                const varId = selectedVarId || prod.variations?.[0]?.id;
+                                if (varId) addToCart(prod, varId, 1);
+                              }}
+                              className="bg-primary hover:bg-primary-dark text-white text-center font-bold py-2 rounded-xl text-[11px] shadow-sm transition-premium cursor-pointer"
                             >
-                              {language === 'ar' ? 'عرض التفاصيل' : 'Details'}
-                            </Link>
+                              {language === 'ar' ? 'أضف إلى السلة' : 'Add to Cart'}
+                            </button>
                             <Link 
                               to="/quotation" 
                               className="bg-cream hover:bg-cream/80 text-primary border border-primary/5 text-center font-bold py-2 rounded-xl text-[11px] transition-premium"

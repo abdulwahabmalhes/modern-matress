@@ -29,7 +29,7 @@ export const defaultHomeLayout: HomeSection[] = [
   { id: 'faq', type: 'faq', name: { en: 'FAQ', ar: 'الأسئلة الشائعة' }, visible: true, order: 10 },
 ];
 
-const API_BASE = 'http://127.0.0.1:8001/api/v1';
+const API_BASE = 'http://127.0.0.1:8000/api/v1';
 
 // Helper to map snake_case backend keys to camelCase frontend keys
 const mapProduct = (p: any): any => {
@@ -98,6 +98,7 @@ const mapCategory = (c: any): any => {
     slug: c.slug,
     name: { en: c.name_en, ar: c.name_ar },
     image: c.image_url,
+    icon: c.icon,
     parent_id: c.parent_id
   };
 };
@@ -109,14 +110,25 @@ export const api = {
       const res = await fetch(`${API_BASE}/categories`);
       if (!res.ok) throw new Error('API error');
       const data = await res.json();
-      return data.map(mapCategory);
+      const mappedBackend = data.map(mapCategory);
+      
+      const offlineStr = localStorage.getItem('mm_offline_categories');
+      const localCategories = offlineStr ? JSON.parse(offlineStr) : [...mockCategories];
+      const merged = [...mappedBackend];
+      localCategories.forEach((lc: any) => {
+        if (!merged.find(c => c.id === lc.id)) merged.push(lc);
+      });
+      return merged;
     } catch (e) {
       console.warn('Backend offline, falling back to mock categories', e);
+      const offlineStr = localStorage.getItem('mm_offline_categories');
+      if (offlineStr) return JSON.parse(offlineStr);
+      localStorage.setItem('mm_offline_categories', JSON.stringify(mockCategories));
       return mockCategories;
     }
   },
 
-  async addCategory(cat: { name_en: string; name_ar: string; image_url?: string; parent_id?: number }) {
+  async addCategory(cat: { name_en: string; name_ar: string; image_url?: string; parent_id?: number; icon?: string }) {
     try {
       const res = await fetch(`${API_BASE}/categories`, {
         method: 'POST',
@@ -127,14 +139,21 @@ export const api = {
       return mapCategory(data);
     } catch (e) {
       console.error('Failed to add category to backend', e);
-      // Fallback local storage mock addition
       const mockNewCat = {
         id: cat.name_en.toLowerCase().replace(/ /g, '-'),
+        dbId: Date.now(),
         slug: cat.name_en.toLowerCase().replace(/ /g, '-'),
         name: { en: cat.name_en, ar: cat.name_ar },
         image: cat.image_url || 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=600&auto=format&fit=crop',
+        icon: cat.icon || 'Box',
         parent_id: cat.parent_id
       };
+
+      const offlineStr = localStorage.getItem('mm_offline_categories');
+      const baseCategories = offlineStr ? JSON.parse(offlineStr) : [...mockCategories];
+      baseCategories.push(mockNewCat);
+      localStorage.setItem('mm_offline_categories', JSON.stringify(baseCategories));
+
       return mockNewCat;
     }
   },
@@ -145,7 +164,13 @@ export const api = {
       const res = await fetch(`${API_BASE}/brands`);
       if (!res.ok) throw new Error('API error');
       const data = await res.json();
-      return data;
+      const storedStr = localStorage.getItem('mm_offline_brands');
+      const localBrands = storedStr ? JSON.parse(storedStr) : [...mockBrands];
+      const merged = [...data];
+      localBrands.forEach((lb: any) => {
+        if (!merged.find((b: any) => b.id === lb.id)) merged.push(lb);
+      });
+      return merged;
     } catch (e) {
       console.warn('Backend offline, falling back to mock brands', e);
       const storedStr = localStorage.getItem('mm_offline_brands');
@@ -223,7 +248,34 @@ export const api = {
       const res = await fetch(`${API_BASE}/products?${query.toString()}`);
       if (!res.ok) throw new Error('API error');
       const data = await res.json();
-      return data.map(mapProduct);
+      const mappedBackend = data.map(mapProduct);
+
+      // Merge with local/mock data so previous data is not lost
+      const storedStr = localStorage.getItem('mm_offline_products');
+      const localProducts = storedStr ? JSON.parse(storedStr) : [...mockProducts];
+      const merged = [...mappedBackend];
+      localProducts.forEach((lp: any) => {
+        if (!merged.find(p => p.id === lp.id)) merged.push(lp);
+      });
+
+      let filtered = [...merged];
+      if (params.category && params.category !== 'all') {
+        filtered = filtered.filter(p => p.category === params.category);
+      }
+      if (params.brand && params.brand !== 'all') {
+        filtered = filtered.filter(p => p.brand.toLowerCase() === params.brand!.toLowerCase());
+      }
+      if (params.search) {
+        const query = params.search.toLowerCase();
+        filtered = filtered.filter(p => 
+          p.name.en.toLowerCase().includes(query) || 
+          p.name.ar.includes(query)
+        );
+      }
+      if (params.firmness && params.firmness !== 'all') {
+        filtered = filtered.filter(p => p.firmness === params.firmness);
+      }
+      return filtered;
     } catch (e) {
       console.warn('Backend offline, falling back to mock products', e);
       const storedStr = localStorage.getItem('mm_offline_products');
@@ -836,7 +888,9 @@ export const api = {
     try {
       const res = await fetch(`${API_BASE}/home-layout`);
       if (!res.ok) throw new Error('API error');
-      return await res.json();
+      const data = await res.json();
+      if (!data || data.length === 0) return defaultHomeLayout;
+      return data;
     } catch (e) {
       const stored = localStorage.getItem('mm_home_layout');
       if (stored) return JSON.parse(stored);
@@ -856,6 +910,34 @@ export const api = {
     } catch (e) {
       localStorage.setItem('mm_home_layout', JSON.stringify(layout));
       return layout;
+    }
+  },
+
+  // Settings
+  async getSettings() {
+    try {
+      const res = await fetch(`${API_BASE}/settings`);
+      if (!res.ok) throw new Error('API error');
+      return await res.json();
+    } catch (e) {
+      const stored = localStorage.getItem('mm_admin_settings');
+      if (stored) return JSON.parse(stored);
+      return {};
+    }
+  },
+
+  async saveSettings(settings: Record<string, string>) {
+    try {
+      const res = await fetch(`${API_BASE}/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings })
+      });
+      if (!res.ok) throw new Error('API error');
+      return await res.json();
+    } catch (e) {
+      localStorage.setItem('mm_admin_settings', JSON.stringify(settings));
+      return { message: 'Saved offline' };
     }
   }
 };
